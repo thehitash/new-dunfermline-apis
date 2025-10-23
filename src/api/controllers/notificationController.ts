@@ -10,7 +10,13 @@ export const registerFCMToken = async (req: Request, res: Response) => {
     const { fcmToken } = req.body;
     const userId = (req as any).user?.id; // From auth middleware
 
+    console.log('📱 FCM Token Registration Request:');
+    console.log('  User ID:', userId);
+    console.log('  Token Length:', fcmToken?.length || 0);
+    console.log('  Token Preview:', fcmToken ? `${fcmToken.substring(0, 20)}...` : 'null');
+
     if (!fcmToken) {
+      console.error('❌ FCM token is missing in request body');
       return res.status(400).json({
         status: false,
         message: 'FCM token is required',
@@ -18,6 +24,7 @@ export const registerFCMToken = async (req: Request, res: Response) => {
     }
 
     if (!userId) {
+      console.error('❌ User not authenticated (no userId in request)');
       return res.status(401).json({
         status: false,
         message: 'User not authenticated',
@@ -28,11 +35,17 @@ export const registerFCMToken = async (req: Request, res: Response) => {
     const user = await User.findById(userId);
 
     if (!user) {
+      console.error(`❌ User not found with ID: ${userId}`);
       return res.status(404).json({
         status: false,
         message: 'User not found',
       });
     }
+
+    console.log(`👤 Registering token for: ${user.fullName} (${user.email})`);
+    console.log(`📍 User Type: ${user.userType}`);
+    console.log(`📱 Previous FCM Token: ${user.fcmToken ? 'Yes' : 'No'}`);
+    console.log(`📱 Previous FCM Tokens Array: ${user.fcmTokens?.length || 0} tokens`);
 
     // Update user's FCM token using findByIdAndUpdate to skip validation
     // This prevents password validation errors for OTP-based login users
@@ -41,27 +54,49 @@ export const registerFCMToken = async (req: Request, res: Response) => {
     };
 
     // Add token to fcmTokens array if not already present
-    if (!user.fcmTokens || !user.fcmTokens.includes(fcmToken)) {
+    const isTokenAlreadyPresent = user.fcmTokens?.includes(fcmToken);
+    if (!isTokenAlreadyPresent) {
       updateData.$addToSet = { fcmTokens: fcmToken };
+      console.log('✅ Adding token to fcmTokens array (new token)');
+    } else {
+      console.log('ℹ️  Token already exists in fcmTokens array');
     }
 
-    await User.findByIdAndUpdate(
+    const updatedUser = await User.findByIdAndUpdate(
       userId,
       updateData,
-      { runValidators: false } // Skip validation to avoid password requirement
+      {
+        runValidators: false, // Skip validation to avoid password requirement
+        new: true // Return updated document
+      }
     );
 
-    console.log(`✅ FCM token registered for user: ${user.fullName}`);
+    if (updatedUser) {
+      console.log(`✅ FCM token registered successfully for user: ${user.fullName}`);
+      console.log(`📱 Updated FCM Token: ${updatedUser.fcmToken ? 'Set' : 'Not Set'}`);
+      console.log(`📱 Total FCM Tokens: ${updatedUser.fcmTokens?.length || 0}`);
+    } else {
+      console.error('❌ Failed to update user document');
+    }
 
     res.json({
       status: true,
       message: 'FCM token registered successfully',
+      data: {
+        tokenCount: updatedUser?.fcmTokens?.length || 0
+      }
     });
-  } catch (error) {
-    console.error('Error registering FCM token:', error);
+  } catch (error: any) {
+    console.error('❌ Error registering FCM token:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack?.split('\n')[0]
+    });
     res.status(500).json({
       status: false,
       message: 'Server error',
+      error: error.message
     });
   }
 };
