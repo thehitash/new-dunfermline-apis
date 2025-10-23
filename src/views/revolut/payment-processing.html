@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processing Payment - Dunfermline Taxi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 30px;
+        }
+
+        .loading-container {
+            margin: 40px 0;
+        }
+
+        .spinner-large {
+            width: 80px;
+            height: 80px;
+            border: 6px solid #f3f4f6;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            margin: 0 auto;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        h1 {
+            color: #1f2937;
+            font-size: 28px;
+            margin: 30px 0 15px;
+            font-weight: 700;
+        }
+
+        p {
+            color: #6b7280;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .steps {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 30px 0;
+            text-align: left;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .step:last-child {
+            border-bottom: none;
+        }
+
+        .step-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 15px;
+            font-size: 18px;
+        }
+
+        .step-icon.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .step-icon.complete {
+            background: #10b981;
+            color: white;
+        }
+
+        .step-icon.pending {
+            background: #e5e7eb;
+            color: #9ca3af;
+        }
+
+        .step-text {
+            flex: 1;
+        }
+
+        .step-title {
+            color: #1f2937;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 3px;
+        }
+
+        .step-desc {
+            color: #9ca3af;
+            font-size: 12px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 30px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 3px;
+            animation: progress 3s ease-in-out infinite;
+        }
+
+        @keyframes progress {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 0%; }
+        }
+
+        .info-text {
+            color: #667eea;
+            font-size: 14px;
+            font-weight: 500;
+            margin-top: 20px;
+        }
+
+        .warning-text {
+            color: #f59e0b;
+            font-size: 13px;
+            margin-top: 20px;
+            padding: 12px;
+            background: #fffbeb;
+            border-radius: 8px;
+            border-left: 3px solid #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🚕 Dunfermline Taxi</div>
+
+        <div class="loading-container">
+            <div class="spinner-large"></div>
+        </div>
+
+        <h1>Processing Payment</h1>
+        <p>Please wait while we process your payment. This may take a few moments.</p>
+
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
+        </div>
+
+        <div class="steps">
+            <div class="step">
+                <div class="step-icon complete">✓</div>
+                <div class="step-text">
+                    <div class="step-title">Payment Initiated</div>
+                    <div class="step-desc">Your payment request has been received</div>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-icon active">
+                    <div style="width: 20px; height: 20px; border: 3px solid white; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                </div>
+                <div class="step-text">
+                    <div class="step-title">Verifying Payment</div>
+                    <div class="step-desc">Confirming transaction with payment provider</div>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-icon pending">3</div>
+                <div class="step-text">
+                    <div class="step-title">Confirming Ride</div>
+                    <div class="step-desc">Your ride will be confirmed shortly</div>
+                </div>
+            </div>
+        </div>
+
+        <p class="info-text">Do not close this window or press the back button</p>
+
+        <div class="warning-text">
+            ⚠️ Your payment is being processed. You will be redirected automatically once completed.
+        </div>
+    </div>
+
+    <script>
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentId = urlParams.get('paymentId');
+        const checkInterval = 2000; // Check every 2 seconds
+        let attempts = 0;
+        const maxAttempts = 30; // Maximum 60 seconds (30 * 2s)
+
+        async function checkPaymentStatus() {
+            if (attempts >= maxAttempts) {
+                // Timeout - redirect to failed page
+                window.location.href = `payment-failed.html?paymentId=${paymentId}&error=Payment verification timeout`;
+                return;
+            }
+
+            attempts++;
+
+            try {
+                // In production, this would call your backend API
+                const response = await fetch(`/api/payment/verify/${paymentId}`);
+                const data = await response.json();
+
+                if (data.status && data.data.status === 'completed') {
+                    // Payment successful
+                    window.location.href = `payment-success.html?paymentId=${paymentId}&amount=${data.data.amount}&currency=${data.data.currency}`;
+                } else if (data.data.status === 'failed') {
+                    // Payment failed
+                    window.location.href = `payment-failed.html?paymentId=${paymentId}&error=${data.data.errorMessage || 'Payment failed'}`;
+                } else {
+                    // Still processing, check again
+                    setTimeout(checkPaymentStatus, checkInterval);
+                }
+            } catch (error) {
+                console.error('Error checking payment status:', error);
+                // Retry on error
+                setTimeout(checkPaymentStatus, checkInterval);
+            }
+        }
+
+        // Start checking payment status if paymentId exists
+        if (paymentId) {
+            setTimeout(checkPaymentStatus, checkInterval);
+        }
+    </script>
+</body>
+</html>

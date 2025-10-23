@@ -1,10 +1,21 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 
-main().then(res => console.log("db connected successfully..!!"))
-main().catch(err => console.log("db not connected...!!!", err));
+dotenv.config();
 
+const MONGODB_URI = process.env.MONGODB_URI as string;
+
+if (!MONGODB_URI) {
+  throw new Error('MONGODB_URI is not defined in environment variables');
+}
+
+main()
+  .then(() => console.log('✅ Database connected successfully'))
+  .catch((err) => {
+    console.error('❌ Database connection failed:', err.message);
+    process.exit(1); // Exit if DB connection fails
+  });
 
 async function main() {
-  await mongoose.connect("mongodb+srv://thehitansh_db_user:2eZgxdYLtOQrMc2T@cluster0.c0sei96.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0");
-  console.log("db connected successfully..!!");
+  await mongoose.connect(MONGODB_URI);
 }

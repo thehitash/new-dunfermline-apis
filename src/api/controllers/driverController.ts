@@ -21,7 +21,7 @@ export const getDriverStatus = async (req: IRequest, res: Response) => {
       data: {
         latitude: driver.location.coordinates[1],
         longitude: driver.location.coordinates[0],
-        heading: driver.location.coordinates[2],
+        heading: driver.heading || 0, // Default to 0 if not set
       }
     });
   } catch (error) {
@@ -45,19 +45,22 @@ export const updateLocation = async (req: IRequest, res: Response) => {
 
     driver.location = {
       type: 'Point',
-      coordinates: [parseFloat(lng), parseFloat(lat), parseFloat(heading)],
+      coordinates: [parseFloat(lng), parseFloat(lat)],
     };
 
+    // Update heading separately if provided
+    if (heading !== undefined && heading !== null) {
+      driver.heading = parseFloat(heading);
+    }
 
     const io = getIO();
     if (io && rideId) {
-
       const roomName = `ride_${rideId}`;
       io.to(roomName).emit('update_driver_location', {
         driverId,
         latitude: driver.location.coordinates[1],
         longitude: driver.location.coordinates[0],
-        heading: driver.location.coordinates[2],
+        heading: driver.heading || 0,
       });
     }
 
@@ -96,20 +99,23 @@ export const updateLocationBackground = async (req: IRequest, res: Response) => 
 
     driver.location = {
       type: 'Point',
-      coordinates: [parseFloat(lng), parseFloat(lat), parseFloat(heading)],
+      coordinates: [parseFloat(lng), parseFloat(lat)],
     };
 
+    // Update heading separately if provided
+    if (heading !== undefined && heading !== null) {
+      driver.heading = parseFloat(heading);
+    }
 
     const io = getIO();
     if (io && rideId) {
-
       console.log("emit ride to customer", rideId)
       const roomName = `ride_${rideId}`;
       io.to(roomName).emit('update_driver_location', {
         driverId,
         latitude: driver.location.coordinates[1],
         longitude: driver.location.coordinates[0],
-        heading: driver.location.coordinates[2],
+        heading: driver.heading || 0,
       });
     }
 

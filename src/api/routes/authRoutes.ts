@@ -1,5 +1,7 @@
 import { Router } from 'express';
-import { signup, login, verifyOTP, sendOTP } from '../controllers/authController';
+import { signup, login, verifyOTP, sendOTP, updateProfile, getUsersByType } from '../controllers/authController';
+import { authLimiter, otpVerifyLimiter } from '../middlewares/rateLimiter';
+import { protect, adminOnly } from '../middlewares/authMiddleware';
 
 const router = Router();
 
@@ -48,7 +50,7 @@ const router = Router();
  *       400:
  *         description: User already exists or invalid data
  */
-router.post('/signup', signup);
+router.post('/signup', authLimiter, signup);
 
 /**
  * @swagger
@@ -74,7 +76,7 @@ router.post('/signup', signup);
  *       401:
  *         description: User not found
  */
-router.post('/login', login);
+router.post('/login', authLimiter, login);
 
 /**
  * @swagger
@@ -102,7 +104,7 @@ router.post('/login', login);
  *       500:
  *         description: Server error    
  */ 
-router.post('/send-otp', sendOTP);
+router.post('/send-otp', authLimiter, sendOTP);
 
 /**
  * @swagger
@@ -133,7 +135,87 @@ router.post('/send-otp', sendOTP);
  *       500:
  *         description: Server error
  */
-router.post('/verify-otp', verifyOTP);
+router.post('/verify-otp', otpVerifyLimiter, verifyOTP);
 
+/**
+ * @swagger
+ * /api/auth/update-profile:
+ *   put:
+ *     summary: Update user profile
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *                 description: User's full name
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: User's email address
+ *               profileImage:
+ *                 type: string
+ *                 description: URL to profile image
+ *               carName:
+ *                 type: string
+ *                 description: Car name (drivers only)
+ *               carNumber:
+ *                 type: string
+ *                 description: Car registration number (drivers only)
+ *               carModel:
+ *                 type: string
+ *                 description: Car model (drivers only)
+ *               carColor:
+ *                 type: string
+ *                 description: Car color (drivers only)
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       400:
+ *         description: Invalid data or email already in use
+ *       401:
+ *         description: Not authorized
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.put('/update-profile', protect, updateProfile);
+
+/**
+ * @swagger
+ * /api/auth/users:
+ *   get:
+ *     summary: Get all users by userType (admin only)
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: userType
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [rider, driver]
+ *         description: Type of users to fetch
+ *     responses:
+ *       200:
+ *         description: Users fetched successfully
+ *       400:
+ *         description: Invalid userType
+ *       401:
+ *         description: Not authorized
+ *       403:
+ *         description: Admin privileges required
+ *       500:
+ *         description: Server error
+ */
+router.get('/users', protect, adminOnly, getUsersByType);
 
 export default router; 

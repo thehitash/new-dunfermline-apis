@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { requestRide, acceptRejectRide, allDriverRides, allRiderRides, pendingRides, getRideById, cancelRide } from '../controllers/rideController';
-import { protect } from '../middlewares/authMiddleware';
+import { requestRide, acceptRejectRide, allDriverRides, allRiderRides, pendingRides, getRideById, cancelRide, getAllRides } from '../controllers/rideController';
+import { protect, adminOnly } from '../middlewares/authMiddleware';
 
 const router = Router();
 
@@ -136,7 +136,38 @@ router.get('/all-rider-rides', protect, allRiderRides);
  *       401:
  *         description: Not authorized  
  */
-router.get('/pending-rides', protect, pendingRides);    
+router.get('/pending-rides', protect, pendingRides);
+
+/**
+ * @swagger
+ * /api/ride/all-rides:
+ *   get:
+ *     summary: Get all rides with pagination (admin only)
+ *     tags: [Ride]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of rides per page
+ *     responses:
+ *       200:
+ *         description: Rides fetched successfully with pagination
+ *       401:
+ *         description: Not authorized
+ *       403:
+ *         description: Admin privileges required
+ */
+router.get('/all-rides', protect, adminOnly, getAllRides);
 
 /**
  * @swagger

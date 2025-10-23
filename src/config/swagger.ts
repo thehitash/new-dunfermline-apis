@@ -5,9 +5,9 @@ const options: swaggerJSDoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Uber Clone API',
+      title: 'Dunfermline Taxi API',
       version: '1.0.0',
-      description: 'API documentation for the Uber Clone application',
+      description: 'API documentation for the Dunfermline Taxi application',
     },
     servers: [
       {
@@ -37,5 +37,5 @@ export const swaggerSpec = swaggerJSDoc(options);
 
 export const swaggerUiOptions: SwaggerUiOptions = {
     customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'Uber Clone API Docs',
+    customSiteTitle: 'Dunfermline Taxi API Docs',
 }; 

@@ -7,14 +7,20 @@ import { Server } from "socket.io";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { Server as HttpServer } from 'http';
 import Message from '../api/models/message';
+import Ride from '../api/models/ride';
+import notificationService from '../services/notificationService';
 
 import { init } from "./socketInstance";
 import { CustomSocket } from "./types";
 
 function initializeSocket(server: HttpServer) {
+    // Get CORS origin from environment or use default for development
+    const corsOrigin = process.env.CORS_ORIGIN ||
+        (process.env.NODE_ENV === 'production' ? false : '*');
+
     const io = new Server(server, {
         cors: {
-            origin: "*",
+            origin: corsOrigin,
             methods: ["GET", "POST", "PUT", "DELETE"],
             allowedHeaders: ["Content-Type", "Authorization"],
             credentials: true,
@@ -33,10 +39,16 @@ function initializeSocket(server: HttpServer) {
     // Authentication Middleware
     io.use((socket: CustomSocket, next) => {
         try {
+            const JWT_SECRET = process.env.JWT_SECRET;
+
+            if (!JWT_SECRET) {
+                return next(new Error("JWT_SECRET not configured"));
+            }
+
             const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(" ")[1];
             if (!token) return next(new Error("Token not provided"));
 
-            const decoded = jwt.verify(token, process.env.JWT_SECRET || "your_jwt_secret");
+            const decoded = jwt.verify(token, JWT_SECRET);
 
             if (typeof decoded === 'string') {
                 return next(new Error("Invalid token payload"));
@@ -137,10 +149,49 @@ function initializeSocket(server: HttpServer) {
                             avatar: doc.profileImage
                         })
                     });
+
                     // Emit to all in the ride room
                     const rideRoom = `ride_${rideId}`;
                     io.to(rideRoom).emit('receive_message', newMessage);
-                    console.log("message sent to ride room", rideRoom)
+                    console.log("message sent to ride room", rideRoom);
+
+                    // Send push notification to other users in the ride
+                    try {
+                        const ride = await Ride.findById(rideId)
+                            .populate('rider', '_id fullName')
+                            .populate('driver', '_id fullName');
+
+                        if (ride) {
+                            const senderName = (newMessage as any).user?.name || 'Someone';
+
+                            // Determine who to send notification to (not the sender)
+                            const recipientId = ride.rider._id.toString() === userId
+                                ? ride.driver?._id.toString()
+                                : ride.rider._id.toString();
+
+                            if (recipientId && recipientId !== userId) {
+                                await notificationService.sendToUser(
+                                    recipientId,
+                                    {
+                                        title: `New message from ${senderName}`,
+                                        body: text.length > 100 ? text.substring(0, 100) + '...' : text,
+                                        data: {
+                                            type: 'message',
+                                            rideId: rideId,
+                                            userName: senderName,
+                                        }
+                                    },
+                                    {
+                                        channelId: 'messages',
+                                    }
+                                );
+                                console.log(`📩 Push notification sent to user ${recipientId}`);
+                            }
+                        }
+                    } catch (notifErr) {
+                        console.error('Error sending push notification:', notifErr);
+                        // Don't fail the message send if notification fails
+                    }
                 } catch (err) {
                     console.error('Error in send_message:', err);
                     socket.emit('error', { message: 'Failed to send message' });

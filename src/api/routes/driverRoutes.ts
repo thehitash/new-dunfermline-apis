@@ -108,6 +108,6 @@ router.post('/location', protect, updateLocation);
  *       404:
  *         description: Driver not found
  */
-router.post('/location-background', updateLocationBackground);
+router.post('/location-background', protect, updateLocationBackground);
 
 export default router; 
