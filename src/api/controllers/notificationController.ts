@@ -34,20 +34,22 @@ export const registerFCMToken = async (req: Request, res: Response) => {
       });
     }
 
-    // Update user's FCM token
-    // Add to fcmTokens array if not already present
-    if (!user.fcmTokens) {
-      user.fcmTokens = [];
+    // Update user's FCM token using findByIdAndUpdate to skip validation
+    // This prevents password validation errors for OTP-based login users
+    const updateData: any = {
+      fcmToken: fcmToken,
+    };
+
+    // Add token to fcmTokens array if not already present
+    if (!user.fcmTokens || !user.fcmTokens.includes(fcmToken)) {
+      updateData.$addToSet = { fcmTokens: fcmToken };
     }
 
-    if (!user.fcmTokens.includes(fcmToken)) {
-      user.fcmTokens.push(fcmToken);
-    }
-
-    // Set as primary FCM token
-    user.fcmToken = fcmToken;
-
-    await user.save();
+    await User.findByIdAndUpdate(
+      userId,
+      updateData,
+      { runValidators: false } // Skip validation to avoid password requirement
+    );
 
     console.log(`✅ FCM token registered for user: ${user.fullName}`);
 

@@ -61,10 +61,13 @@ const UserSchema: Schema = new Schema({
   },
   password: {
     type: String,
-    required: true,
+    required: false, // Optional for OTP-based login
     minlength: 8, // Minimum 8 characters for password
     validate: {
       validator: function(v: string) {
+        // Skip validation if password is not provided (OTP login)
+        if (!v) return true;
+
         // Password must contain:
         // - At least 8 characters
         // - At least one uppercase letter
