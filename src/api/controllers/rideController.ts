@@ -80,29 +80,33 @@ export const requestRide = async (req: IRequest, res: Response) => {
     const ride = await Ride.create(rideData);
     console.log('✅ Ride created successfully:', ride._id);
 
-    // Populate rider info for notifications
+    // Populate rider info
     await ride.populate('rider', 'fullName phoneNumber');
     await ride.populate('vehicle', 'name capacity type');
 
-    // Find all drivers (or nearby drivers if geolocation is enabled)
-    const drivers = await User.find({
-      userType: 'driver',
-    });
+    // For app bookings (not WhatsApp), drivers will be notified AFTER payment completes
+    // For WhatsApp bookings, notify drivers immediately
+    if (bookingMethod === 'whatsapp') {
+      console.log('📱 WhatsApp booking - Notifying drivers immediately...');
 
-    console.log(`📍 Found ${drivers.length} drivers to notify`);
+      // Find all drivers
+      const drivers = await User.find({
+        userType: 'driver',
+      });
 
-    // Send real-time socket notification
-    const io = getIO();
-    if (io) {
-      io.emit('new_ride_request', ride);
-    }
+      console.log(`📍 Found ${drivers.length} drivers to notify`);
 
-    // Send push notification to all drivers (skip WhatsApp bookings)
-    if (bookingMethod !== 'whatsapp') {
+      // Send real-time socket notification
+      const io = getIO();
+      if (io) {
+        io.emit('new_ride_request', ride);
+      }
+
+      // Send push notification to all drivers
       const driverIds = drivers.map(driver => (driver._id as any).toString());
 
       const notificationPayload = {
-        title: '🚖 New Ride Request!',
+        title: '🚖 New Ride Request! (WhatsApp)',
         body: `Pickup: ${pickup.name || pickup.description}\nDestination: ${destination.name || destination.description}`,
         data: {
           type: 'new_ride_request',
@@ -121,6 +125,8 @@ export const requestRide = async (req: IRequest, res: Response) => {
       );
 
       console.log(`✅ Push notification sent - Success: ${result.successCount}, Failed: ${result.failureCount}`);
+    } else {
+      console.log('💳 App booking - Drivers will be notified after payment completes');
     }
 
     res.status(201).json({ data: ride, status: true });

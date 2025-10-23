@@ -277,6 +277,58 @@ export const verifyPayment = async (req: IRequest, res: Response) => {
       if (ride) {
         ride.paymentStatus = newStatus;
         await ride.save();
+
+        // If payment completed, notify all drivers about the ride
+        if (newStatus === 'completed' && ride.bookingMethod === 'app') {
+          console.log('💳 Payment completed - Notifying drivers about new ride...');
+
+          // Populate ride info
+          await ride.populate('rider', 'fullName phoneNumber');
+          await ride.populate('vehicle', 'name capacity type');
+
+          // Find all drivers
+          const User = require('../models/user').default;
+          const drivers = await User.find({
+            userType: 'driver',
+          });
+
+          console.log(`📍 Found ${drivers.length} drivers to notify`);
+
+          // Send real-time socket notification
+          const { getIO } = require('../../socket/socketInstance');
+          const io = getIO();
+          if (io) {
+            io.emit('new_ride_request', ride);
+          }
+
+          // Send push notification to all drivers
+          const notificationService = require('../../services/notificationService').default;
+          const driverIds = drivers.map((driver: any) => driver._id.toString());
+
+          const pickupName = (ride.pickupLocation as any)?.name || (ride.pickupLocation as any)?.address || 'Pickup location';
+          const destName = (ride.destinationLocation as any)?.name || (ride.destinationLocation as any)?.address || 'Destination';
+
+          const notificationPayload = {
+            title: '🚖 New Ride Request!',
+            body: `Pickup: ${pickupName}\nDestination: ${destName}`,
+            data: {
+              type: 'new_ride_request',
+              rideId: (ride._id as any).toString(),
+              pickupLocation: pickupName,
+              destinationLocation: destName,
+              estimatedFare: ride.estimatedFare?.toString() || '',
+            }
+          };
+
+          console.log('📲 Sending push notification to drivers after payment...');
+          const result = await notificationService.sendToMultipleUsers(
+            driverIds,
+            notificationPayload,
+            { channelId: 'ride_updates', priority: 'high' }
+          );
+
+          console.log(`✅ Push notification sent - Success: ${result.successCount}, Failed: ${result.failureCount}`);
+        }
       }
 
       return res.status(200).json({
@@ -362,6 +414,58 @@ export const handleRevolutWebhook = async (req: Request, res: Response) => {
     if (ride) {
       ride.paymentStatus = newStatus;
       await ride.save();
+
+      // If payment completed via webhook, notify all drivers about the ride
+      if (newStatus === 'completed' && ride.bookingMethod === 'app') {
+        console.log('💳 Payment completed via webhook - Notifying drivers about new ride...');
+
+        // Populate ride info
+        await ride.populate('rider', 'fullName phoneNumber');
+        await ride.populate('vehicle', 'name capacity type');
+
+        // Find all drivers
+        const User = require('../models/user').default;
+        const drivers = await User.find({
+          userType: 'driver',
+        });
+
+        console.log(`📍 Found ${drivers.length} drivers to notify`);
+
+        // Send real-time socket notification
+        const { getIO } = require('../../socket/socketInstance');
+        const io = getIO();
+        if (io) {
+          io.emit('new_ride_request', ride);
+        }
+
+        // Send push notification to all drivers
+        const notificationService = require('../../services/notificationService').default;
+        const driverIds = drivers.map((driver: any) => driver._id.toString());
+
+        const pickupName = (ride.pickupLocation as any)?.name || (ride.pickupLocation as any)?.address || 'Pickup location';
+        const destName = (ride.destinationLocation as any)?.name || (ride.destinationLocation as any)?.address || 'Destination';
+
+        const notificationPayload = {
+          title: '🚖 New Ride Request!',
+          body: `Pickup: ${pickupName}\nDestination: ${destName}`,
+          data: {
+            type: 'new_ride_request',
+            rideId: (ride._id as any).toString(),
+            pickupLocation: pickupName,
+            destinationLocation: destName,
+            estimatedFare: ride.estimatedFare?.toString() || '',
+          }
+        };
+
+        console.log('📲 Sending push notification to drivers after payment webhook...');
+        const result = await notificationService.sendToMultipleUsers(
+          driverIds,
+          notificationPayload,
+          { channelId: 'ride_updates', priority: 'high' }
+        );
+
+        console.log(`✅ Push notification sent - Success: ${result.successCount}, Failed: ${result.failureCount}`);
+      }
     }
 
     // Send success response to Revolut
