@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirecting to Payment Gateway</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 5px solid #FFF;
+            border-bottom-color: #FF3D00;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+            margin: 20px 0;
+        }
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 1rem;
+        }
+        p {
+            color: #666;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Redirecting to Payment Gateway</h1>
+        <div class="loader"></div>
+        <p>Please wait while we redirect you to the payment gateway.</p>
+    </div>
+    <script>
+  (function () {
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get("id");
+
+    const showError = (msg) => {
+      const url = `/stripe/error?id=${encodeURIComponent(orderId || "")}&msg=${encodeURIComponent(msg)}`;
+      window.location.replace(url);
+    };
+
+    if (!orderId) {
+      showError("Missing order id in the URL.");
+      return;
+    }
+
+    let isSubmitting = false;
+
+    async function initRevolut() {
+      if (isSubmitting) return;
+      isSubmitting = true;
+
+      // Abort if backend doesn’t answer within 15s
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
+      try {
+        const resp = await fetch("/stripe/create-checkout-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          signal: controller.signal,
+          body: JSON.stringify({ id: orderId }),
+        });
+
+        // Read text first to handle non-JSON bodies (e.g., HTML error pages)
+        const text = await resp.text();
+        let data;
+        try { data = text ? JSON.parse(text) : {}; } catch { data = { error: `Unexpected response: ${text.slice(0, 200)}` }; }
+
+        if (!resp.ok) {
+          const reason = data?.error || `HTTP ${resp.status}`;
+          return showError(`Checkout session failed: ${reason}`);
+        }
+
+        const checkoutUrl = data?.id; // backend returns { id: <checkout_url> }
+        if (!checkoutUrl || typeof checkoutUrl !== "string") {
+          return showError("Invalid response from payment gateway initializer.");
+        }
+
+        // Redirect to Revolut hosted checkout
+        window.location.replace(checkoutUrl);
+      } catch (err) {
+        const msg = err?.name === "AbortError" ? "Request timed out." : (err?.message || "Network error.");
+        showError(`Could not start payment: ${msg}`);
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    // tiny delay to show spinner, as you had
+    setTimeout(initRevolut, 800);
+  })();
+</script>
+
+</body>
+</html>
